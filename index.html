@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>霧都夜行與星盤之城 - 進度修正版</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap');
+
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1e1e20;
+            --text-main: #e0e0e0;
+            --accent: #d4af37; /* Gold */
+            --ssr-glow: 0 0 15px rgba(255, 215, 0, 0.8);
+            --sr-glow: 0 0 10px rgba(192, 192, 192, 0.6);
+            --r-glow: 0 0 5px rgba(205, 127, 50, 0.6);
+        }
+
+        body {
+            font-family: 'Noto Serif TC', serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        h1 { 
+            color: var(--accent); 
+            margin: 10px 0 5px 0; 
+            text-shadow: 0 0 10px rgba(212,175,55,0.3); 
+            text-align: center;
+            font-size: 1.8rem;
+        }
+
+        .stats-header {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            background: rgba(255,255,255,0.05);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid #333;
+        }
+
+        /* Music Toggle */
+        .music-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: 0.3s;
+        }
+        .music-toggle.playing { box-shadow: 0 0 10px var(--accent); background: rgba(212, 175, 55, 0.2); }
+
+        .controls { display: flex; gap: 15px; margin: 10px 0 20px 0; flex-wrap: wrap; justify-content: center; }
+        
+        button {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #333, #111);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            border-radius: 6px;
+            font-family: inherit;
+        }
+        button:active { transform: scale(0.95); }
+        button:hover { box-shadow: 0 0 15px var(--accent); color: #fff; }
+        
+        /* --- STAGE CONTAINER --- */
+        .stage-container {
+            width: 100%;
+            max-width: 1000px;
+            min-height: 480px;
+            border: 1px solid #333;
+            background: radial-gradient(circle at center, #2a2a2a 0%, #000 100%);
+            border-radius: 12px;
+            padding: 20px;
+            box-sizing: border-box;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        /* Desktop Grid */
+        .stage-container.grid-mode {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 15px;
+            align-content: center;
+            justify-content: center;
+        }
+        
+        .break-line { display: none; }
+
+        /* Mobile 3-3-4 Layout Override */
+        @media (max-width: 768px) {
+            .stage-container.grid-mode {
+                display: flex;
+                flex-wrap: wrap; 
+                justify-content: center;
+                align-content: center;
+                gap: 6px; 
+                padding: 15px 5px;
+            }
+
+            .break-line {
+                display: block;
+                width: 100%; 
+                height: 0;
+                margin: 2px 0;
+            }
+            
+            /* Uniform Sizing for Mobile */
+            .stage-container.grid-mode .card {
+                width: 23%; 
+                flex-grow: 0; 
+                margin-bottom: 5px;
+            }
+
+            .stage-container {
+                min-height: auto;
+                padding-bottom: 25px;
+            }
+        }
+
+        /* --- CARD STYLES --- */
+        /* SINGLE PULL */
+        .card.full-size {
+            width: 260px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid #444;
+        }
+
+        .card.full-size .card-img-box {
+            width: 100%;
+            height: 300px;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #000;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        /* COMPACT PULL */
+        .card.compact {
+            aspect-ratio: 0.75; 
+            background: var(--card-bg);
+            border-radius: 6px;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+            animation: popInMini 0.3s ease-out backwards;
+            border: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .card.compact .card-img-box {
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            position: relative;
+        }
+        
+        .card.compact .card-content {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%;
+            padding: 15px 0 3px 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.95), transparent);
+            display: flex; align-items: flex-end; justify-content: center;
+        }
+
+        .card.compact .card-name {
+            font-size: 0.75rem; 
+            margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            padding: 0 2px; text-shadow: 0 1px 3px #000; color: #eee; font-weight: normal;
+        }
+        
+        .card.compact .card-title, .card.compact .card-quote { display: none; }
+
+        /* Common Elements */
+        .card-img-box img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+        .card-content { text-align: center; color: #fff; }
+        .card-name { font-weight: bold; }
+        
+        .card.full-size .card-name { font-size: 1.4rem; margin: 10px 0; }
+        .card.full-size .card-title { font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+        .card.full-size .card-quote { 
+            font-size: 0.95rem; color: var(--text-sub); font-style: italic; 
+            margin-top: auto; border-top: 1px solid #333; padding-top: 10px; width: 100%;
+        }
+
+        /* --- RARITY STYLES --- */
+        .ssr { border-color: #ffd700 !important; box-shadow: var(--ssr-glow); }
+        .sr { border-color: #c0c0c0 !important; box-shadow: var(--sr-glow); }
+        .r { border-color: #cd7f32 !important; box-shadow: var(--r-glow); }
+
+        .rarity-badge {
+            position: absolute;
+            top: 0; left: 0;
+            font-weight: 800;
+            z-index: 5;
+            backdrop-filter: blur(2px);
+            font-size: 1.2rem; 
+            padding: 2px 10px;
+            border-bottom-right-radius: 8px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.85); 
+        }
+        
+        .ssr .rarity-badge { 
+            color: #ffd700; 
+            border-right: 2px solid #ffd700;
+            border-bottom: 2px solid #ffd700;
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+        }
+        .sr .rarity-badge { 
+            color: #e0e0e0; 
+            border-right: 2px solid #c0c0c0;
+            border-bottom: 2px solid #c0c0c0;
+            text-shadow: 0 0 5px rgba(224, 224, 224, 0.5);
+        }
+        .r .rarity-badge { 
+            color: #cd7f32; 
+            border-right: 2px solid #cd7f32;
+            border-bottom: 2px solid #cd7f32;
+        }
+
+        .card.compact .rarity-badge {
+            font-size: 0.9rem;
+            padding: 1px 6px;
+            border-bottom-right-radius: 6px;
+        }
+
+        /* Animations */
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes popInMini { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        /* Inventory Grid */
+        .inventory-section { width: 100%; max-width: 1000px; margin-top: 30px;}
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 12px;
+        }
+        .mini-card {
+            aspect-ratio: 1/1;
+            background: #252526;
+            border: 1px solid #333;
+            border-radius: 8px;
+            cursor: pointer;
+            overflow: hidden;
+            position: relative;
+            transition: 0.2s;
+        }
+        .mini-card.collected { opacity: 1; border-color: var(--accent); box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        .mini-card.uncollected { opacity: 0.3; filter: grayscale(100%); }
+        .mini-card:hover { transform: scale(1.1); z-index: 10; }
+        .mini-card img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+        
+        .mini-rarity {
+            position: absolute;
+            top: 0; left: 0;
+            font-size: 0.7rem;
+            font-weight: bold;
+            padding: 1px 4px;
+            border-bottom-right-radius: 4px;
+            z-index: 2;
+            background: rgba(0,0,0,0.8);
+        }
+        .mini-rarity.SSR { color: #ffd700; border-right: 1px solid #ffd700; border-bottom: 1px solid #ffd700; }
+        .mini-rarity.SR { color: #e0e0e0; border-right: 1px solid #c0c0c0; border-bottom: 1px solid #c0c0c0; }
+        .mini-rarity.R { color: #cd7f32; border-right: 1px solid #cd7f32; border-bottom: 1px solid #cd7f32; }
+
+        /* Modal */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 2000;
+            justify-content: center; align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background: var(--card-bg); width: 90%; max-width: 700px; max-height: 90vh;
+            display: flex; flex-direction: column;
+            border-radius: 15px; overflow: hidden; border: 1px solid var(--accent);
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            position: relative;
+        }
+        @media(min-width: 768px) { .modal-content { flex-direction: row; } }
+        
+        .modal-img-container {
+            min-height: 350px; flex: 1;
+            display: flex; align-items: flex-end; justify-content: center;
+            overflow: hidden; background: #000; position: relative;
+        }
+        .modal-img-container img { width: 100%; height: 100%; object-fit: cover; object-position: top; position: relative; z-index: 2; }
+        .modal-info { padding: 30px; overflow-y: auto; background: #1a1a1d; flex: 1.2; }
+        .close-btn { 
+            position: absolute; top: 15px; right: 20px; font-size: 2rem; color: #fff; cursor: pointer; z-index: 20; text-shadow: 0 0 5px #000;
+        }
+        .detail-row { margin-bottom: 12px; border-bottom: 1px dashed #444; padding-bottom: 8px; font-size: 0.95rem; }
+        .detail-label { color: var(--accent); margin-right: 8px; font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+    <button class="music-toggle" id="musicBtn" onclick="toggleMusic()">🎵 音樂：關</button>
+
+    <h1>✦ 霧都與星盤之城 ✦</h1>
+    <div class="stats-header">
+        總召喚次數: <span id="totalPullsDisplay" style="color: var(--accent); font-weight: bold;">0</span>
+    </div>
+    
+    <div class="controls">
+        <button onclick="pullGacha(1)">單抽召喚</button>
+        <button onclick="pullGacha(10)">十連召喚</button>
+        <button onclick="resetData()" style="background:#422; border-color:#d44; color:#daa;">重置</button>
+    </div>
+
+    <div class="stage-container" id="stage">
+        <div style="color: #666; font-style: italic; font-size: 0.9rem; text-align: center;">
+            點擊召喚按鈕開始...<br>
+            <span style="font-size:0.8rem; margin-top:5px; display:block;">(建議開啟音樂體驗最佳效果)</span>
+        </div>
+    </div>
+
+    <div class="inventory-section">
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px; align-items: flex-end;">
+            <span style="font-size: 1.2rem; color: #fff;">角色圖鑑</span>
+            <span style="color:var(--accent); font-size:0.9rem;">進度: <span id="count">0</span>/<span id="total">0</span></span>
+        </div>
+        <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="modal" id="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-btn" onclick="document.getElementById('modal').style.display='none'">&times;</span>
+            
+            <div class="modal-img-container" id="modalImgBox">
+                <img id="mImg" src="" alt="">
+            </div>
+
+            <div class="modal-info">
+                <h2 id="mName" style="color: var(--accent); margin: 0 0 5px 0; font-size: 1.8rem;"></h2>
+                <div style="color:#888; font-size:0.9rem; margin-bottom:20px; font-style:italic;" id="mTitle"></div>
+                
+                <div class="detail-row"><span class="detail-label">稀有度</span> <span id="mRarity"></span></div>
+                <div class="detail-row"><span class="detail-label">累計召喚</span> <span id="mCount" style="color: #fff; font-weight: bold;">0</span> 次</div>
+                <div class="detail-row"><span class="detail-label">CP對象</span> <span id="mCP"></span></div>
+                <div class="detail-row"><span class="detail-label">台詞</span> "<span id="mQuote"></span>"</div>
+                
+                <div style="margin-top:20px; font-size:0.95rem; line-height:1.7; color:#ccc; text-align:justify;">
+                    <span class="detail-label">設定</span><br>
+                    <span id="mDesc"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- AUDIO SYSTEM ---
+        const bgm = new Audio("https://files.catbox.moe/w76hwj.mp3");
+        bgm.loop = true; bgm.volume = 0.4;
+        const sfxSSR = new Audio("https://files.catbox.moe/xb93x3.mp3");
+        const sfxSR = new Audio("https://files.catbox.moe/rcmgib.mp3");
+        const sfxR = new Audio("https://files.catbox.moe/qstst8.mp3");
+
+        let isMusicPlaying = false;
+        let hasInteracted = false;
+
+        function toggleMusic() {
+            const btn = document.getElementById('musicBtn');
+            if(isMusicPlaying) {
+                bgm.pause();
+                btn.innerText = "🎵 音樂：關";
+                btn.classList.remove('playing');
+            } else {
+                bgm.play().catch(()=>{});
+                btn.innerText = "🎵 音樂：開";
+                btn.classList.add('playing');
+            }
+            isMusicPlaying = !isMusicPlaying;
+        }
+
+        document.body.addEventListener('click', () => {
+            if(!hasInteracted && !isMusicPlaying) {
+                toggleMusic();
+                hasInteracted = true;
+            }
+        }, {once:true});
+
+        function playSound(rarity) {
+            sfxSSR.pause(); sfxSSR.currentTime=0;
+            sfxSR.pause(); sfxSR.currentTime=0;
+            sfxR.pause(); sfxR.currentTime=0;
+
+            if(rarity==='SSR') sfxSSR.play();
+            else if(rarity==='SR') sfxSR.play();
+            else sfxR.play();
+        }
+
+        // --- DATA ---
+        const db = [
+            { id: 1, name: "納希瑟斯", img: "https://i.meee.com.tw/kvfcmWP.png", title: "美貌舉世無雙", rarity: "SSR", color: "linear-gradient(135deg, #fadd75, #9b59b6)", quote: "維納托先生是我最喜歡的戀人！", desc: "182cm，金髮紫眼。性格溫和但做事果決。對大家的態度不會太恭敬。", cp: "尼古拉斯．維納托" },
+            { id: 2, name: "尼古拉斯．維納托", img: "https://i.meee.com.tw/HAvzdTj.png", title: "前國王 / 天才", rarity: "SSR", color: "linear-gradient(135deg, #ffffff, #3498db)", quote: "讚美本王！", desc: "188.54cm，白髮藍眼。自信、天才、常識人。城堡裡有很多機器人。", cp: "納希瑟斯" },
+            { id: 3, name: "奧拉", img: "https://i.meee.com.tw/SCMPHmm.png", title: "掌管時間之神", rarity: "SSR", color: "linear-gradient(135deg, #aed6f1, #f1c40f)", quote: "......（冷淡地看著你）", desc: "180cm，藍髮金眼。高智商、小心眼、偏執。雖然是神但背地裡很有錢。", cp: "蜜拉思" },
+            { id: 4, name: "蜜拉思", img: "https://i.meee.com.tw/EQxAIYg.png", title: "下層區之神", rarity: "SSR", color: "linear-gradient(135deg, #e8daef, #8e44ad)", quote: "這很有趣，不是嗎？", desc: "172cm，白髮紫漸層。擅長詛咒。思考靈活，有點喜歡看戲但很惜命。", cp: "奧拉" },
+            { id: 5, name: "海神", img: "https://i.meee.com.tw/YWjKSUI.png", title: "快樂的海神", rarity: "SSR", color: "linear-gradient(135deg, #f9e79f, #2980b9)", quote: "天天開心！哈哈！", desc: "184cm，金髮藍眼水母頭。樂天派，路癡，3C白癡。其實原本是時間神老么。", cp: "冥神" },
+            { id: 6, name: "冥神", img: "https://i.meee.com.tw/dhxSvcN.png", title: "地下的冥神", rarity: "SSR", color: "linear-gradient(135deg, #111111, #555555)", quote: "......", desc: "190cm，黑長直。吉祥物性格，呆萌。全色盲。喜歡閃亮亮的東西（海神）。", cp: "海神" },
+            { id: 7, name: "彼得", img: "https://i.meee.com.tw/PJOElT9.png", title: "容易中邪的國王", rarity: "SSR", color: "linear-gradient(135deg, #d7bde2, #5d6d7e)", quote: "Shit. 我是不是又中邪了？", desc: "185cm，駝色長髮。有強迫症，純陰體質。認為林恩是吉祥的貓貓。", cp: "林恩" },
+            { id: 8, name: "林恩", img: "https://i.meee.com.tw/kxAllct.png", title: "商業大佬 / 醫生", rarity: "SSR", color: "linear-gradient(135deg, #d2b4de, #f39c12)", quote: "涼拌！", desc: "178cm，紫捲髮金眼。務實、利益至上。雖然是社畜的頂頭上司但性格很淡定軟爛。", cp: "彼得" },
+            { id: 9, name: "莉莉絲", img: "https://i.meee.com.tw/VMWgSj8.png", title: "萬子之母", rarity: "SSR", color: "linear-gradient(135deg, #4a235a, #ec7063)", quote: "我要找阿朵拉喝茶～", desc: "170cm，黑紫髮羊角。位階極高，喜歡喝茶和不用動腦的活動。", cp: "阿朵拉貝莉絲" },
+            { id: 10, name: "維爾德拉克斯 (蘭蘭)", img: "https://i.meee.com.tw/wgADv31.png", title: "離家出走的龍", rarity: "SR", color: "linear-gradient(135deg, #1abc9c, #e67e22)", quote: "買呀！這有什麼問題？", desc: "191cm，深藍綠長髮。道德觀低下的快樂小龍。只對朋友和喬諾娜好。", cp: "喬諾娜" },
+            { id: 11, name: "喬諾娜", img: "https://i.meee.com.tw/duMFdPy.png", title: "粉紅系仿生人", rarity: "SR", color: "linear-gradient(135deg, #f1948a, #85c1e9)", quote: "蘭蘭～", desc: "176cm，粉黃漸層髮。很有自知之明，開朗積極。覺得蘭蘭很可愛。", cp: "蘭蘭" },
+            { id: 12, name: "克里昂", img: "https://i.meee.com.tw/2gcElaW.png", title: "復活的半精靈", rarity: "SR", color: "linear-gradient(135deg, #f7dc6f, #3498db)", quote: "體力就是國力！", desc: "177cm，金短髮。純直男，陽光正直。雖然死了但又復活了。", cp: "科絲塔" },
+            { id: 13, name: "小目", img: "https://i.meee.com.tw/rxpd4Nz.png", title: "科技總裁仿生人", rarity: "SR", color: "linear-gradient(135deg, #f5b7b1, #aed6f1)", quote: "我是世界上最棒的總裁✨", desc: "186cm，粉黃漸層。以前是乞丐。喜歡學總裁語氣。超級喜歡茉莉。", cp: "茉莉" },
+            { id: 14, name: "尼奥扎里奥斯", img: "https://i.meee.com.tw/b5NZLDg.png", title: "蘭蘭的表哥", rarity: "SR", color: "linear-gradient(135deg, #c0392b, #2ecc71)", quote: "老子罩你！", desc: "210cm，龍族。打扮時尚霸氣。雖然蘭蘭對他態度差，但他很講義氣。", cp: "無" },
+            { id: 15, name: "哈蘇", img: "https://i.meee.com.tw/JiyAEJM.png", title: "精準的紀錄員", rarity: "SR", color: "linear-gradient(135deg, #ffffff, #bdc3c7)", quote: "我有記。", desc: "196cm，白髮白膚。像粉筆一樣。做事完全照規矩，缺乏常識。", cp: "無" },
+            { id: 16, name: "諾維安", img: "https://i.meee.com.tw/Zg7Yp3n.png", title: "S.S.諾埃瑪號船長", rarity: "SR", color: "linear-gradient(135deg, #a569bd, #3498db)", quote: "耶！我是帥氣的船長！", desc: "179cm，紫短髮。陽光開朗，非常乾淨清澈。不擅長勾心鬥角。", cp: "無" },
+            { id: 17, name: "埃斯特雷拉", img: "https://i.meee.com.tw/UjKlF9I.png", title: "萬能的星星", rarity: "SR", color: "linear-gradient(135deg, #f1c40f, #ffffff)", quote: "我餓了～請餵飽我！", desc: "120cm，金髮星星眼。可以分裂成很多個。船上的萬能幫手。", cp: "無" },
+            { id: 18, name: "阿朵菈貝莉絲", img: "https://i.meee.com.tw/Y6gOPKq.png", title: "溫柔的人偶師", rarity: "SR", color: "linear-gradient(135deg, #f9e79f, #f1948a)", quote: "莉莉絲？妳要幹嘛？", desc: "165cm，金粉漸層髮。溫柔有母性，喜歡做人偶。討厭小偷。", cp: "莉莉絲" },
+            { id: 19, name: "科絲塔", img: "https://i.meee.com.tw/bvWXxHc.png", title: "各種意義上的妹妹", rarity: "R", color: "linear-gradient(135deg, #82e0aa, #f7dc6f)", quote: "真是奇怪 BATA。", desc: "159cm，綠髮。不太聰明但善良。討厭化學。覺得克里昂不好心。", cp: "克里昂" },
+            { id: 20, name: "茉莉", img: "https://i.meee.com.tw/yUTV61e.png", title: "社畜醫生", rarity: "R", color: "linear-gradient(135deg, #e6b0aa, #d7bde2)", quote: "我的芒果～🫶", desc: "白短髮粉挑染。被林恩壓榨。對小目非常有耐心和包容心。", cp: "小目" },
+            { id: 21, name: "拉扎爾", img: "https://i.meee.com.tw/tKxTx84.png", title: "溫和的船醫", rarity: "R", color: "linear-gradient(135deg, #f5cba7, #85c1e9)", quote: "願您有個美好的旅程，閣下。", desc: "177cm，粉髮獸耳。擅長講故事。神秘但溫和的好好先生。", cp: "無" },
+            { id: 22, name: "蘇郎", img: "https://i.meee.com.tw/ch6uDhG.png", title: "哈蘇的員工", rarity: "R", color: "linear-gradient(135deg, #f1948a, #f7dc6f)", quote: "哈哈，隨便吧。", desc: "176cm，喬諾娜的大哥。性格躺平涼拌。喜歡吃爆米花和櫻桃。", cp: "無" },
+            { id: 23, name: "諾郎", img: "https://i.meee.com.tw/ot7Ucaa.png", title: "陰沉(?)的花藝師", rarity: "R", color: "linear-gradient(135deg, #c39bd3, #f1948a)", quote: "我要跟你一起爆了！！", desc: "176cm，喬諾娜的三弟。比較敏感多疑，但對諾維安很好。", cp: "無" },
+            { id: 24, name: "卡洛特", img: "https://i.meee.com.tw/8gD95GB.png", title: "偽人船員", rarity: "R", color: "linear-gradient(135deg, #bb8fce, #2980b9)", quote: "這不友善！", desc: "173cm，紫髮炸蝦頭。諾維安的弟弟。直覺很準，討厭草味。", cp: "無" },
+            { id: 25, name: "安德烈", img: "https://i.meee.com.tw/hKipIH6.png", title: "彼得的弟弟", rarity: "R", color: "linear-gradient(135deg, #2c3e50, #2471a3)", quote: "報告！我可以打你嗎？", desc: "183cm，黑髮藍眼。發明家。幫中邪的哥哥收爛攤子。聽得到小雅各的心聲。", cp: "小雅各" },
+            { id: 26, name: "小雅各", img: "https://i.meee.com.tw/g1jWBLi.png", title: "內心戲豐富的天皇", rarity: "R", color: "linear-gradient(135deg, #85c1e9, #e67e22)", quote: "我不知道......(內心:媽的靚仔)", desc: "172cm，水藍長髮。會發特殊的摩斯電碼心聲。喜歡橘子和安德烈。", cp: "安德烈" },
+            { id: 27, name: "拿但業", img: "https://i.meee.com.tw/1iQ3G09.png", title: "嬌氣少爺", rarity: "R", color: "linear-gradient(135deg, #f5b7b1, #82e0aa)", quote: "（微笑著嘲笑你）", desc: "180cm，粉綠漸層髮。文藝詩人。十指不沾陽春水。腓力的主子。", cp: "腓力" },
+            { id: 28, name: "腓力", img: "https://i.meee.com.tw/5HfNHQH.png", title: "忠誠的保母", rarity: "R", color: "linear-gradient(135deg, #a93226, #e67e22)", quote: "少主！你看！", desc: "181cm，紅棕髮。武功高強但腦子單純。拿但業的狗(?)。", cp: "拿但業" }
+        ];
+
+        // --- DATA PERSISTENCE ---
+        let gachaData = { total: 0, counts: {} };
+
+        // Load
+        const saved = localStorage.getItem('gachaStats');
+        if(saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if(Array.isArray(parsed)) { 
+                    gachaData.total = parsed.length;
+                    parsed.forEach(id => gachaData.counts[id] = 1);
+                } else {
+                    gachaData = parsed;
+                }
+            } catch(e) {}
+        }
+        // Initialize counts
+        db.forEach(c => { if(!gachaData.counts[c.id]) gachaData.counts[c.id] = 0; });
+        updateUI();
+
+        // --- CORE FUNCTIONS ---
+        function pullGacha(count) {
+            const stage = document.getElementById('stage');
+            stage.innerHTML = '';
+            
+            const results = [];
+            let highest = 'R'; 
+            
+            for(let i=0; i<count; i++) {
+                const r = Math.random();
+                let pool;
+                let rarity = 'R';
+                
+                if(r < 0.15) { pool = db.filter(c=>c.rarity==='SSR'); rarity = 'SSR'; } 
+                else if(r < 0.45) { pool = db.filter(c=>c.rarity==='SR'); rarity = 'SR'; } 
+                else { pool = db.filter(c=>c.rarity==='R'); rarity = 'R'; }
+                
+                if(rarity==='SSR') highest='SSR';
+                else if(rarity==='SR' && highest!=='SSR') highest='SR';
+
+                const char = pool[Math.floor(Math.random()*pool.length)];
+                results.push(char);
+                
+                gachaData.total++;
+                gachaData.counts[char.id]++;
+            }
+            
+            saveData();
+            updateUI();
+
+            if(count === 1) playSound(results[0].rarity);
+            else playSound(highest);
+
+            if(count === 1) {
+                stage.className = 'stage-container'; 
+                renderCard(results[0], stage, true);
+            } else {
+                stage.className = 'stage-container grid-mode';
+                results.forEach((char, idx) => {
+                    // Force line breaks for 3-3-4 layout on mobile
+                    if(idx === 3 || idx === 6) {
+                        const br = document.createElement('div');
+                        br.className = 'break-line';
+                        stage.appendChild(br);
+                    }
+                    setTimeout(() => {
+                        renderCard(char, stage, false);
+                    }, idx * 100);
+                });
+            }
+        }
+
+        function renderCard(char, container, isFullSize) {
+            const card = document.createElement('div');
+            card.className = `card ${char.rarity.toLowerCase()} ${isFullSize ? 'full-size' : 'compact'}`;
+            
+            let imgHtml = '';
+            if(char.img) {
+                imgHtml = `<img src="${char.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">`;
+            }
+            const fallbackHtml = `<div style="display:${char.img?'none':'flex'}; width:100%; height:100%; align-items:center; justify-content:center; color:rgba(255,255,255,0.3); font-size:${isFullSize?'3rem':'1.5rem'}; font-weight:bold;">${char.name[0]}</div>`;
+            
+            // Generate Rarity Badge (New Large Style)
+            const rarityBadge = `<div class="rarity-badge">${char.rarity}</div>`;
+
+            if(isFullSize) {
+                card.innerHTML = `
+                    ${rarityBadge}
+                    <div class="card-img-box" style="background:${char.color}">${imgHtml}${fallbackHtml}</div>
+                    <div class="card-content">
+                        <div class="card-title">${char.title}</div>
+                        <div class="card-name">${char.name}</div>
+                        <div class="card-quote">"${char.quote}"</div>
+                    </div>
+                `;
+            } else {
+                card.innerHTML = `
+                    ${rarityBadge}
+                    <div class="card-img-box" style="background:${char.color}">${imgHtml}${fallbackHtml}</div>
+                    <div class="card-content">
+                        <div class="card-name">${char.name}</div>
+                    </div>
+                `;
+            }
+            container.appendChild(card);
+        }
+
+        function updateUI() {
+            // Update Total Pulls
+            document.getElementById('totalPullsDisplay').innerText = gachaData.total;
+            
+            // Fix: Update Total Characters count
+            document.getElementById('total').innerText = db.length;
+
+            const grid = document.getElementById('grid');
+            const uniqueCount = Object.values(gachaData.counts).filter(c => c > 0).length;
+            document.getElementById('count').innerText = uniqueCount;
+            
+            grid.innerHTML = '';
+            db.forEach(char => {
+                const count = gachaData.counts[char.id];
+                const isOwned = count > 0;
+                const d = document.createElement('div');
+                d.className = `mini-card ${isOwned?'collected':'uncollected'}`;
+                
+                let countBadge = '';
+                if(count > 1) {
+                    countBadge = `<div style="position:absolute; top:2px; right:2px; background:rgba(0,0,0,0.7); color:#fff; font-size:0.6rem; padding:1px 4px; border-radius:4px; border:1px solid #555;">x${count}</div>`;
+                }
+                
+                // Add Rarity Badge to Inventory
+                const rarityBadge = `<div class="mini-rarity ${char.rarity}">${char.rarity}</div>`;
+
+                if(char.img) {
+                    d.innerHTML = `${rarityBadge}<div style="width:100%; height:100%; background:${char.color}"><img src="${char.img}" onerror="this.style.display='none'"></div>${countBadge}`;
+                } else {
+                    d.innerHTML = `${rarityBadge}<div style="width:100%; height:100%; background:${char.color}"></div>${countBadge}`;
+                }
+                d.onclick = () => { if(isOwned) showModal(char); };
+                grid.appendChild(d);
+            });
+        }
+
+        function showModal(char) {
+            const m = document.getElementById('modal');
+            document.getElementById('modalImgBox').style.background = char.color;
+            const img = document.getElementById('mImg');
+            if(char.img) { img.style.display='block'; img.src=char.img; }
+            else { img.style.display='none'; }
+            
+            document.getElementById('mName').innerText = char.name;
+            document.getElementById('mTitle').innerText = char.title;
+            document.getElementById('mRarity').innerText = char.rarity;
+            document.getElementById('mCount').innerText = gachaData.counts[char.id];
+            document.getElementById('mCP').innerText = char.cp;
+            document.getElementById('mQuote').innerText = char.quote;
+            document.getElementById('mDesc').innerHTML = char.desc;
+            m.style.display = 'flex';
+        }
+
+        function saveData() { localStorage.setItem('gachaStats', JSON.stringify(gachaData)); }
+        function closeModal(e) { if(e.target.id === 'modal') e.target.style.display='none'; }
+        
+        function resetData() {
+            if(confirm('重置所有資料（包含召喚次數）？')) {
+                gachaData = { total: 0, counts: {} };
+                db.forEach(c => gachaData.counts[c.id] = 0);
+                saveData();
+                updateUI();
+            }
+        }
+    </script>
+</body>
+</html>
